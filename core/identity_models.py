@@ -88,17 +88,27 @@ class TeamIdentity(models.Model):
             extension = Path(self.logo.name).suffix.lower()
             if extension not in {".png", ".jpg", ".jpeg", ".webp"}:
                 errors["logo"] = "Upload a PNG, JPG, JPEG or WebP image."
-            if getattr(self.logo, "size", 0) > 5 * 1024 * 1024:
+
+            try:
+                logo_size = self.logo.size
+            except (FileNotFoundError, OSError):
+                logo_size = 0
+                errors["logo"] = (
+                    "The stored logo file could not be read. Upload the logo again or clear it."
+                )
+
+            if logo_size > 5 * 1024 * 1024:
                 errors["logo"] = "The logo must be smaller than 5 MB."
 
         if errors:
             raise ValidationError(errors)
 
     def save(self, *args, **kwargs):
-        # The identity is a true singleton: creating another instance replaces
-        # the single row instead of failing primary-key validation.
+        # Keep the identity as a singleton. Validation belongs to the ModelForm
+        # (or an explicit full_clean() call by non-form code); repeating it here
+        # can raise ValidationError after the admin form has already validated,
+        # turning a recoverable field error into an HTTP 500 response.
         self.pk = 1
-        self.full_clean(exclude=[self._meta.pk.name])
         return super().save(*args, **kwargs)
 
     def delete(self, *args, **kwargs):
