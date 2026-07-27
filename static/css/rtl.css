@@ -1,0 +1,96 @@
+@font-face{font-family:"The Team Arabic";src:url("../fonts/NotoKufiArabic-Variable.ttf") format("truetype");font-style:normal;font-weight:100 900;font-display:swap}
+
+html[dir="rtl"]{direction:rtl}
+html[dir="rtl"] body,
+html[dir="rtl"] button,
+html[dir="rtl"] input,
+html[dir="rtl"] select,
+html[dir="rtl"] textarea{font-family:"The Team Arabic",Tahoma,"Segoe UI",Arial,sans-serif;letter-spacing:0}
+
+/* A fixed sidebar must not participate in RTL grid line numbering. */
+html[dir="rtl"] .app-shell{display:block;min-height:100vh}
+html[dir="rtl"] .sidebar{inset:0 0 0 auto;right:0;left:auto}
+html[dir="rtl"] .main{grid-column:auto;min-width:0;width:auto;margin-right:250px;margin-left:0}
+html[dir="rtl"] .content{width:100%;margin-inline:auto;text-align:start}
+html[dir="rtl"] .topbar{right:auto;left:auto;text-align:start}
+
+html[dir="rtl"] .brand,
+html[dir="rtl"] .auth-brand,
+html[dir="rtl"] .nav a,
+html[dir="rtl"] .privacy-badge,
+html[dir="rtl"] .person-cell,
+html[dir="rtl"] .player-focus,
+html[dir="rtl"] .next-training{direction:rtl;text-align:right}
+html[dir="rtl"] .brand>div,
+html[dir="rtl"] .auth-brand>div,
+html[dir="rtl"] .privacy-badge>div,
+html[dir="rtl"] .person-cell>div,
+html[dir="rtl"] .focus-copy,
+html[dir="rtl"] .next-training>div:last-child{min-width:0}
+html[dir="rtl"] .nav a.active{box-shadow:inset -3px 0 var(--red)}
+html[dir="rtl"] .messages{right:auto;left:28px}
+
+html[dir="rtl"] .page-head{direction:rtl;text-align:right}
+html[dir="rtl"] .dashboard-brand-copy{flex:1 1 auto;min-width:0;max-width:calc(100% - 270px)}
+html[dir="rtl"] .dashboard-club-lockup{direction:rtl;justify-content:flex-start;min-width:0}
+html[dir="rtl"] .dashboard-club-lockup>div{flex:1 1 auto;min-width:0}
+html[dir="rtl"] .dashboard-brand-head h1{max-width:100%;white-space:normal;overflow-wrap:anywhere;word-break:normal;text-align:right;line-height:1.25;letter-spacing:0}
+html[dir="rtl"] .dashboard-brand-subline{margin:10px 104px 0 0!important;text-align:right}
+html[dir="rtl"] .dashboard-brand-head .head-actions{flex:0 0 auto;justify-content:flex-start}
+html[dir="rtl"] .eyebrow{letter-spacing:0}
+
+html[dir="rtl"] .quick-item{border-right:0;border-left:1px solid var(--line);text-align:right}
+html[dir="rtl"] .quick-item:last-child{border-left:0}
+html[dir="rtl"] .card,
+html[dir="rtl"] .card-head,
+html[dir="rtl"] .player-info,
+html[dir="rtl"] .focus-copy,
+html[dir="rtl"] .report-sheet,
+html[dir="rtl"] .form-card{text-align:right}
+html[dir="rtl"] .card-head{direction:rtl}
+html[dir="rtl"] .card-head>a{white-space:nowrap}
+
+html[dir="rtl"] .event-row{direction:rtl;grid-template-columns:47px 78px minmax(0,1fr) 50px 12px;text-align:right}
+html[dir="rtl"] .event-main{min-width:0;text-align:right}
+html[dir="rtl"] .event-main strong,
+html[dir="rtl"] .event-main small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+html[dir="rtl"] .event-time,
+html[dir="rtl"] .training-date,
+html[dir="rtl"] .score-chip,
+html[dir="rtl"] .quick-item strong{direction:ltr;unicode-bidi:isolate}
+html[dir="rtl"] .row-arrow{transform:scaleX(-1)}
+
+html[dir="rtl"] table{direction:rtl}
+html[dir="rtl"] th,
+html[dir="rtl"] td{text-align:right}
+html[dir="rtl"] .table-wrap{direction:rtl}
+html[dir="rtl"] .player-scores>div{border-right:0;border-left:1px solid var(--line)}
+html[dir="rtl"] .player-scores>div:last-child{border-left:0}
+html[dir="rtl"] .metric-bars>div>span{direction:rtl}
+
+/* Keep Latin names, locations and existing German demo data readable inside Arabic pages. */
+html[dir="rtl"] [dir="auto"],
+html[dir="rtl"] .bidi-auto{unicode-bidi:plaintext;text-align:start}
+
+/* Brand-driven components must follow the selected colors. */
+.accent-card{background:linear-gradient(145deg,var(--red),var(--red-dark))}
+.metric-bars i em{background:linear-gradient(90deg,var(--red),var(--red-dark))}
+
+@media(max-width:980px){
+  html[dir="rtl"] .main{margin:0}
+  html[dir="rtl"] .app-shell{display:block}
+  html[dir="rtl"] .sidebar{left:auto;right:0;transform:translateX(110%)}
+  html[dir="rtl"] .sidebar.open{transform:translateX(0)}
+  html[dir="rtl"] .dashboard-brand-copy{max-width:none}
+}
+
+@media(max-width:860px){
+  html[dir="rtl"] .dashboard-brand-subline{margin:10px 0 0!important}
+  html[dir="rtl"] .dashboard-brand-head .head-actions{width:100%;justify-content:stretch}
+}
+
+@media(max-width:620px){
+  html[dir="rtl"] .event-row{grid-template-columns:40px minmax(0,1fr) 48px 12px}
+  html[dir="rtl"] .event-type{display:none}
+  html[dir="rtl"] .content{padding-inline:16px}
+}
