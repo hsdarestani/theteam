@@ -2,6 +2,8 @@ name: Apply The Team branding layer
 
 on:
   workflow_dispatch:
+  issues:
+    types: [opened]
   push:
     branches: [main]
     paths:
