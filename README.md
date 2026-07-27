@@ -1,16 +1,26 @@
-# Team Performance Hub
+# The Team Performance Hub
 
-A private, German-language coaching dashboard focused on simple workflows for squad status, player evaluations, training planning, match tracking, calendar overview and printable reports.
+A private, brandable and multilingual coaching dashboard for squad status, player evaluations, training planning, match tracking, calendar overview and printable reports.
 
-## Product principles
+This repository is based on the complete `hsdarestani/eintracht` application and adds a reusable team identity layer.
 
-- One primary action per screen
-- Core coaching decisions visible before detailed data
-- Four-value player evaluation: mentality, physicality, performance and potential
-- Attendance changes saved with one click
-- Internal calendar without third-party API sharing
-- Print/PDF-friendly reports with trainer comments
-- First-run setup instead of a shared default password
+## Team identity administration
+
+After creating the first administrator at `/setup/`, open:
+
+- `/admin/core/teamidentity/1/change/`
+
+The singleton **Team identity** panel can change the application without editing source code:
+
+- team name, short name, application name and tagline
+- PNG, JPG or WebP team logo
+- primary, dark-primary, secondary, background, surface and text colors
+- German, English, Arabic or Persian interface language
+- automatic or explicit LTR/RTL direction
+- custom phrase translations through JSON
+- optional advanced CSS overrides
+
+Uploaded identity assets are stored on the persistent Docker volume `team_media`.
 
 ## Local development
 
@@ -22,18 +32,18 @@ python manage.py migrate
 python manage.py runserver
 ```
 
-Open `http://127.0.0.1:8000/setup/` to create the first trainer account. A demo squad and example data are created automatically.
+Open `http://127.0.0.1:8000/setup/` to create the first administrator account. A fictional demo squad is created automatically.
 
 ## Production
 
-Production uses Docker Compose with Django, PostgreSQL and Caddy. Caddy obtains and renews the TLS certificate for `eintracht.smarbiz.sbs` automatically.
+Production uses Docker Compose with Django, PostgreSQL and Caddy. Caddy obtains and renews the TLS certificate for `team.smarbiz.sbs` automatically.
 
 GitHub Actions deploys pushes to `main` using repository secrets:
 
-- `HOST`: production server IP or hostname
+- `HOST`: `5.75.203.165` or the production server hostname
 - `PASS`: root SSH password
 
-The first deployment creates `/opt/eintracht/.env` with random application and database secrets. The first trainer account is created interactively at `/setup/`.
+The deployment directory is `/opt/theteam`. The first deployment creates `/opt/theteam/.env` with random application and database secrets.
 
 ## Privacy baseline
 
@@ -44,4 +54,4 @@ The first deployment creates `/opt/eintracht/.env` with random application and d
 - No analytics, tracking pixels or external font requests
 - Pages are marked `noindex,nofollow`
 
-This is an application baseline; a formal GDPR review, retention policy and role/permission concept should be completed before storing real athlete health or sensitive performance data.
+A formal GDPR review, retention policy and role/permission concept should be completed before storing real athlete health or sensitive performance data.

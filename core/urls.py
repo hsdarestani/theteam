@@ -2,10 +2,11 @@ from django.urls import path
 
 from ratings import views as rating_views
 
-from . import management_views, views
+from . import branding_views, management_views, views
 
 urlpatterns = [
     path("health/", views.health, name="health"),
+    path("branding/logo/", branding_views.team_logo, name="team_logo"),
     path("setup/", views.setup, name="setup"),
     path("", views.dashboard, name="dashboard"),
     path("spieler/", management_views.player_list, name="players"),

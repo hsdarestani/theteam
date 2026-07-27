@@ -1,51 +1,88 @@
 {% load static %}
 <!doctype html>
-<html lang="de">
+<html lang="{{ team_identity.resolved_language }}" dir="{{ team_identity.resolved_direction }}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#111216">
+  <meta name="theme-color" content="{{ team_identity.primary_color }}">
   <meta name="robots" content="noindex,nofollow">
-  <title>{% block title %}Team Performance{% endblock %}</title>
+  <title>{% block title %}{{ team_identity.team_name }} · {{ team_identity.app_name }}{% endblock %}</title>
   <link rel="stylesheet" href="{% static 'css/app.css' %}">
   <link rel="stylesheet" href="{% static 'css/evaluation.css' %}">
   <link rel="stylesheet" href="{% static 'css/dashboard-brand.css' %}">
   <link rel="stylesheet" href="{% static 'css/match-ratings.css' %}">
   <link rel="stylesheet" href="{% static 'css/management.css' %}">
+  <style>
+    :root{
+      --bg:{{ team_identity.background_color }};
+      --surface:{{ team_identity.surface_color }};
+      --ink:{{ team_identity.text_color }};
+      --dark:{{ team_identity.secondary_color }};
+      --dark2:{{ team_identity.secondary_color }};
+      --red:{{ team_identity.primary_color }};
+      --red-dark:{{ team_identity.primary_dark_color }};
+    }
+    .team-logo{width:42px;height:42px;object-fit:contain;display:block;flex:0 0 auto}
+    .dashboard-club-logo.team-configured-logo{object-fit:contain;background:transparent}
+    .report-team-logo{width:42px;height:42px;object-fit:contain;margin-inline-end:10px}
+    html[dir="rtl"] body{font-family:Tahoma,"Segoe UI",Arial,sans-serif}
+    html[dir="rtl"] .app-shell{grid-template-columns:1fr 250px}
+    html[dir="rtl"] .sidebar{inset:0 0 0 auto}
+    html[dir="rtl"] .main{grid-column:1}
+    html[dir="rtl"] .nav a.active{box-shadow:inset -3px 0 var(--red)}
+    html[dir="rtl"] .messages{right:auto;left:28px}
+    html[dir="rtl"] th{text-align:right}
+    html[dir="rtl"] .row-arrow{transform:scaleX(-1)}
+    html[dir="rtl"] .quick-item{border-right:0;border-left:1px solid var(--line)}
+    html[dir="rtl"] .quick-item:last-child{border-left:0}
+    html[dir="rtl"] .player-scores>div{border-right:0;border-left:1px solid var(--line)}
+    html[dir="rtl"] .player-scores>div:last-child{border-left:0}
+    @media(max-width:980px){
+      html[dir="rtl"] .app-shell{display:block}
+      html[dir="rtl"] .sidebar{left:auto;right:0;transform:translateX(110%)}
+      html[dir="rtl"] .sidebar.open{transform:translateX(0)}
+    }
+    {{ team_identity.custom_css|safe }}
+  </style>
 </head>
 <body>
 <div class="app-shell">
   <aside class="sidebar" id="sidebar">
     <div class="brand">
-      <span class="brand-mark"><i></i><i></i></span>
-      <div><small>INTERNES TEAMBOARD</small><strong>Performance Hub</strong></div>
+      {% if team_identity.logo %}
+        <img src="{% url 'team_logo' %}" alt="{{ team_identity.team_name }}" class="team-logo">
+      {% else %}
+        <span class="brand-mark"><i></i><i></i></span>
+      {% endif %}
+      <div><small>{{ ui.internal_board }}</small><strong>{{ team_identity.app_name }}</strong></div>
     </div>
     <nav class="nav">
-      <a href="{% url 'dashboard' %}" class="{% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}"><span>⌂</span>Übersicht</a>
-      <a href="{% url 'calendar' %}" class="{% if request.resolver_match.url_name == 'calendar' or request.resolver_match.url_name == 'event_create' or request.resolver_match.url_name == 'event_edit' %}active{% endif %}"><span>□</span>Kalender</a>
-      <a href="{% url 'trainings' %}" class="{% if 'training' in request.resolver_match.url_name %}active{% endif %}"><span>△</span>Training</a>
-      <a href="{% url 'players' %}" class="{% if 'player' in request.resolver_match.url_name %}active{% endif %}"><span>◉</span>Kader</a>
-      <a href="{% url 'matches' %}" class="{% if 'match' in request.resolver_match.url_name %}active{% endif %}"><span>◇</span>Spiele</a>
-      <a href="{% url 'report' %}" class="{% if request.resolver_match.url_name == 'report' %}active{% endif %}"><span>▤</span>Report</a>
+      <a href="{% url 'dashboard' %}" class="{% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}"><span>⌂</span>{{ ui.dashboard }}</a>
+      <a href="{% url 'calendar' %}" class="{% if request.resolver_match.url_name == 'calendar' or request.resolver_match.url_name == 'event_create' or request.resolver_match.url_name == 'event_edit' %}active{% endif %}"><span>□</span>{{ ui.calendar }}</a>
+      <a href="{% url 'trainings' %}" class="{% if 'training' in request.resolver_match.url_name %}active{% endif %}"><span>△</span>{{ ui.training }}</a>
+      <a href="{% url 'players' %}" class="{% if 'player' in request.resolver_match.url_name %}active{% endif %}"><span>◉</span>{{ ui.squad }}</a>
+      <a href="{% url 'matches' %}" class="{% if 'match' in request.resolver_match.url_name %}active{% endif %}"><span>◇</span>{{ ui.matches }}</a>
+      <a href="{% url 'report' %}" class="{% if request.resolver_match.url_name == 'report' %}active{% endif %}"><span>▤</span>{{ ui.reports }}</a>
+      {% if request.user.is_staff %}<a href="{% url 'admin:core_teamidentity_changelist' %}"><span>⚙</span>{{ ui.settings }}</a>{% endif %}
     </nav>
     {% if nav_next_event %}
     <div class="sidebar-next">
-      <span class="eyebrow">NÄCHSTER TERMIN</span>
+      <span class="eyebrow">{{ ui.next_event }}</span>
       <strong>{{ nav_next_event.title }}</strong>
       <p>{{ nav_next_event.starts_at|date:"D, d.m. · H:i" }}</p>
       <small>{{ nav_next_event.location|default:"Ort offen" }}</small>
     </div>
     {% endif %}
-    <div class="privacy-badge"><span>✓</span><div><strong>Intern & geschützt</strong><small>Keine öffentliche API</small></div></div>
+    <div class="privacy-badge"><span>✓</span><div><strong>{{ ui.private }}</strong><small>{{ ui.no_public_api }}</small></div></div>
   </aside>
 
   <main class="main">
     <header class="topbar">
       <button class="menu-btn" type="button" aria-label="Menü öffnen" data-menu>☰</button>
-      <div class="topbar-title"><span>Guten Tag,</span><strong>{{ request.user.first_name|default:request.user.username }}</strong></div>
+      <div class="topbar-title"><span>{{ ui.hello }}</span><strong>{{ request.user.first_name|default:request.user.username }}</strong></div>
       <div class="top-actions">
-        <span class="secure-pill">● Daten intern</span>
-        <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="avatar-btn" title="Abmelden">{{ request.user.first_name|first|default:"T" }}{{ request.user.last_name|first }}</button></form>
+        <span class="secure-pill">● {{ ui.internal_data }}</span>
+        <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="avatar-btn" title="{{ ui.logout }}">{{ request.user.first_name|first|default:"T" }}{{ request.user.last_name|first }}</button></form>
       </div>
     </header>
     <div class="content">
@@ -55,11 +92,11 @@
   </main>
 </div>
 <nav class="mobile-nav">
-  <a href="{% url 'dashboard' %}" class="{% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}"><span>⌂</span>Übersicht</a>
-  <a href="{% url 'calendar' %}" class="{% if request.resolver_match.url_name == 'calendar' or request.resolver_match.url_name == 'event_edit' %}active{% endif %}"><span>□</span>Kalender</a>
-  <a href="{% url 'training_create' %}" class="mobile-primary"><span>＋</span>Planen</a>
-  <a href="{% url 'players' %}" class="{% if 'player' in request.resolver_match.url_name %}active{% endif %}"><span>◉</span>Kader</a>
-  <a href="{% url 'report' %}" class="{% if request.resolver_match.url_name == 'report' %}active{% endif %}"><span>▤</span>Report</a>
+  <a href="{% url 'dashboard' %}" class="{% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}"><span>⌂</span>{{ ui.dashboard }}</a>
+  <a href="{% url 'calendar' %}" class="{% if request.resolver_match.url_name == 'calendar' or request.resolver_match.url_name == 'event_edit' %}active{% endif %}"><span>□</span>{{ ui.calendar }}</a>
+  <a href="{% url 'training_create' %}" class="mobile-primary"><span>＋</span>{{ ui.plan }}</a>
+  <a href="{% url 'players' %}" class="{% if 'player' in request.resolver_match.url_name %}active{% endif %}"><span>◉</span>{{ ui.squad }}</a>
+  <a href="{% url 'report' %}" class="{% if request.resolver_match.url_name == 'report' %}active{% endif %}"><span>▤</span>{{ ui.reports }}</a>
 </nav>
 <script src="{% static 'js/app.js' %}"></script>
 {% block scripts %}{% endblock %}

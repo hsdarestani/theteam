@@ -1,5 +1,5 @@
 {% extends 'core/base.html' %}
-{% block title %}Reports{% endblock %}
+{% block title %}Reports · {{ team_identity.team_name }}{% endblock %}
 {% block content %}
 <section class="page-head no-print">
   <div><span class="eyebrow">VERTRAULICH · NUR INTERN</span><h1>Reports</h1><p>Gezielt suchen, filtern und nur den relevanten Bericht als PDF ausgeben.</p></div>
@@ -17,7 +17,13 @@
 </form>
 
 <article class="report-sheet">
-  <header class="report-header"><div class="brand"><span class="brand-mark"><i></i><i></i></span><div><small>INTERNER TEAMREPORT</small><strong>Performance Hub</strong></div></div><div><span>Erstellt am</span><strong>{% now "d.m.Y · H:i" %}</strong></div></header>
+  <header class="report-header">
+    <div class="brand">
+      {% if team_identity.logo %}<img src="{% url 'team_logo' %}" alt="{{ team_identity.team_name }}" class="report-team-logo">{% else %}<span class="brand-mark"><i></i><i></i></span>{% endif %}
+      <div><small>{{ team_identity.short_name }} · INTERNER TEAMREPORT</small><strong>{{ team_identity.team_name }} · {{ team_identity.app_name }}</strong></div>
+    </div>
+    <div><span>Erstellt am</span><strong>{% now "d.m.Y · H:i" %}</strong></div>
+  </header>
   <section class="report-title"><span class="eyebrow">{{ report_type|upper }} REPORT</span><h1>{{ report_title }}</h1><p>{{ report_subtitle }}</p>{% if q or date_from or date_to %}<div class="report-filter-note">Aktive Filter:{% if q %} Suche „{{ q }}“{% endif %}{% if date_from %} · ab {{ date_from }}{% endif %}{% if date_to %} · bis {{ date_to }}{% endif %}</div>{% endif %}</section>
 
   <div class="report-kpis"><div><small>MENTALITÄT Ø</small><strong>{{ team_avg.mentality|floatformat:1|default:"–" }}</strong></div><div><small>PHYSIS Ø</small><strong>{{ team_avg.physicality|floatformat:1|default:"–" }}</strong></div><div><small>LEISTUNG Ø</small><strong>{{ team_avg.performance|floatformat:1|default:"–" }}</strong></div>{% if selected_match %}<div><small>SPIELERGEBNIS</small><strong>{{ selected_match.goals_for|default:"–" }} : {{ selected_match.goals_against|default:"–" }}</strong></div>{% endif %}</div>
@@ -40,7 +46,7 @@
   {% endif %}
 
   {% if report_type == 'overview' or report_type == 'match' %}
-  <section class="report-section"><h2>{% if selected_match %}Spielbericht · vs. {{ selected_match.opponent }}{% else %}Spielberichte{% endif %}</h2>{% if selected_match %}<div class="report-match"><div><small>{{ selected_match.competition|default:"Spiel" }}</small><strong>Team vs. {{ selected_match.opponent }}</strong><span>{{ selected_match.kickoff|date:"d.m.Y · H:i" }} · {{ selected_match.location|default:"Ort offen" }}</span></div><div class="report-score">{{ selected_match.goals_for|default:"–" }} : {{ selected_match.goals_against|default:"–" }}</div></div><table><thead><tr><th>Spieler</th><th>Minuten</th><th>Mentalität</th><th>Physis</th><th>Leistung</th><th>Kommentar</th></tr></thead><tbody>{% for performance in selected_match.performances.all %}<tr><td>{{ performance.player.full_name }}</td><td>{{ performance.minutes_played }}′</td><td>{{ performance.mentality }}</td><td>{{ performance.physicality }}</td><td>{{ performance.performance }}</td><td>{{ performance.comment|default:"–" }}</td></tr>{% empty %}<tr><td colspan="6">Noch keine Spielerleistungen erfasst.</td></tr>{% endfor %}</tbody></table>{% else %}<div class="empty-state">Kein passendes Spiel gefunden.</div>{% endif %}{% if report_type == 'match' and filtered_matches %}<h3 class="report-subheading no-print">Gefundene Spiele</h3><div class="report-result-links no-print">{% for item in filtered_matches %}<a href="?type=match&match={{ item.pk }}{% if q %}&q={{ q|urlencode }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}"><span>{{ item.kickoff|date:"d.m.Y" }}</span><strong>vs. {{ item.opponent }}</strong></a>{% endfor %}</div>{% endif %}</section>
+  <section class="report-section"><h2>{% if selected_match %}Spielbericht · vs. {{ selected_match.opponent }}{% else %}Spielberichte{% endif %}</h2>{% if selected_match %}<div class="report-match"><div><small>{{ selected_match.competition|default:"Spiel" }}</small><strong>{{ team_identity.short_name }} vs. {{ selected_match.opponent }}</strong><span>{{ selected_match.kickoff|date:"d.m.Y · H:i" }} · {{ selected_match.location|default:"Ort offen" }}</span></div><div class="report-score">{{ selected_match.goals_for|default:"–" }} : {{ selected_match.goals_against|default:"–" }}</div></div><table><thead><tr><th>Spieler</th><th>Minuten</th><th>Mentalität</th><th>Physis</th><th>Leistung</th><th>Kommentar</th></tr></thead><tbody>{% for performance in selected_match.performances.all %}<tr><td>{{ performance.player.full_name }}</td><td>{{ performance.minutes_played }}′</td><td>{{ performance.mentality }}</td><td>{{ performance.physicality }}</td><td>{{ performance.performance }}</td><td>{{ performance.comment|default:"–" }}</td></tr>{% empty %}<tr><td colspan="6">Noch keine Spielerleistungen erfasst.</td></tr>{% endfor %}</tbody></table>{% else %}<div class="empty-state">Kein passendes Spiel gefunden.</div>{% endif %}{% if report_type == 'match' and filtered_matches %}<h3 class="report-subheading no-print">Gefundene Spiele</h3><div class="report-result-links no-print">{% for item in filtered_matches %}<a href="?type=match&match={{ item.pk }}{% if q %}&q={{ q|urlencode }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}"><span>{{ item.kickoff|date:"d.m.Y" }}</span><strong>vs. {{ item.opponent }}</strong></a>{% endfor %}</div>{% endif %}</section>
   {% endif %}
 
   <section class="report-section report-comment"><h2>Kommentar zum Report</h2><div class="report-note">{{ note.note|default:"Noch kein Kommentar hinterlegt."|linebreaksbr }}</div><form method="post" class="no-print report-note-form">{% csrf_token %}{{ note_form.note }}<button class="btn btn-secondary">Kommentar speichern</button></form></section>

@@ -1,8 +1,7 @@
 {% extends 'core/base.html' %}
-{% load static %}
-{% block title %}Übersicht · Team Performance{% endblock %}
+{% block title %}{{ team_identity.team_name }} · {{ team_identity.app_name }}{% endblock %}
 {% block content %}
-<section class="page-head dashboard-head dashboard-brand-head"><div class="dashboard-brand-copy"><div class="dashboard-club-lockup"><img src="{% static 'img/eintracht-frankfurt-logo-1998-v2.svg' %}" alt="Eintracht Frankfurt" class="dashboard-club-logo"><div><span class="eyebrow">EINTRACHT FRANKFURT</span><h1>Teamboard</h1></div></div><p class="dashboard-brand-subline">Training, Kader und Leistung auf einen Blick.</p></div><div class="head-actions"><a href="{% url 'training_create' %}" class="btn btn-primary">＋ Training planen</a><a href="{% url 'event_create' %}" class="btn btn-secondary">Termin hinzufügen</a></div></section>
+<section class="page-head dashboard-head dashboard-brand-head"><div class="dashboard-brand-copy"><div class="dashboard-club-lockup">{% if team_identity.logo %}<img src="{% url 'team_logo' %}" alt="{{ team_identity.team_name }}" class="dashboard-club-logo team-configured-logo">{% else %}<span class="brand-mark"><i></i><i></i></span>{% endif %}<div><span class="eyebrow">{{ team_identity.short_name }}</span><h1>{{ team_identity.team_name }}</h1></div></div><p class="dashboard-brand-subline">{{ team_identity.tagline }}</p></div><div class="head-actions"><a href="{% url 'training_create' %}" class="btn btn-primary">＋ Training planen</a><a href="{% url 'event_create' %}" class="btn btn-secondary">Termin hinzufügen</a></div></section>
 
 <section class="quick-strip">
   <div class="quick-item"><span class="quick-icon red">◉</span><div><small>AKTIVE SPIELER</small><strong>{{ players_count }}</strong></div></div>
