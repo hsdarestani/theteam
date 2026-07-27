@@ -30,19 +30,42 @@ jobs:
           cache: pip
 
       - name: Validate Django application
+        id: validate
+        continue-on-error: true
         shell: bash
         env:
           DJANGO_SECRET_KEY: ci-only-secret-key
           DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1,team.smarbiz.sbs
         run: |
-          set -euo pipefail
-          pip install -r requirements.txt
-          python manage.py makemigrations --check
-          python manage.py check
-          python manage.py test
-          python manage.py collectstatic --noinput
+          set -o pipefail
+          {
+            set -euo pipefail
+            pip install -r requirements.txt
+            python manage.py makemigrations --check
+            python manage.py check
+            python manage.py test
+            python manage.py collectstatic --noinput
+          } 2>&1 | tee /tmp/theteam-validation.log
+
+      - name: Publish validation error
+        if: always() && steps.validate.outcome == 'failure' && github.event_name == 'issues'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = '/tmp/theteam-validation.log';
+            const raw = fs.existsSync(path) ? fs.readFileSync(path, 'utf8') : 'Validation log was not created.';
+            const tail = raw.slice(-12000);
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: `Django validation failed:\n\n\`\`\`text\n${tail}\n\`\`\``,
+            });
 
       - name: Deploy via SSH
+        id: deploy
+        if: steps.validate.outcome == 'success'
         uses: appleboy/ssh-action@v1.2.2
         with:
           host: ${{ secrets.HOST }}
@@ -118,12 +141,18 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const status = '${{ job.status }}';
+            const validation = '${{ steps.validate.outcome }}';
+            const deployment = '${{ steps.deploy.outcome }}';
             const runId = '${{ github.run_id }}';
             const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${runId}`;
+            const succeeded = validation === 'success' && deployment === 'success';
             await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.issue.number,
-              body: `Deployment workflow **${status}**.\n\nRun ID: \`${runId}\`\n\n${runUrl}`,
+              body: `Workflow **${succeeded ? 'success' : 'failure'}**. Validation: \`${validation}\`. Deployment: \`${deployment}\`.\n\nRun ID: \`${runId}\`\n\n${runUrl}`,
             });
+
+      - name: Fail when validation failed
+        if: steps.validate.outcome == 'failure'
+        run: exit 1
