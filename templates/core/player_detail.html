@@ -1,0 +1,112 @@
+{% extends 'core/base.html' %}
+{% block title %}{{ player.full_name }}{% endblock %}
+{% block content %}
+<div class="back-row"><a href="{% url 'players' %}">← Zurück zum Kader</a></div>
+
+<section class="player-hero">
+  <div class="player-hero-avatar">{{ player.initials }}</div>
+  <div class="player-hero-main">
+    <span class="status-dot {{ player.status }}">{{ player.get_status_display }}</span>
+    <h1><em>#{{ player.shirt_number }}</em> {{ player.full_name }}</h1>
+    <p>{{ player.position }}{% if player.nationality %} · {{ player.nationality }}{% endif %}</p>
+  </div>
+  <a href="{% url 'evaluate_player' player.pk %}" class="btn btn-primary">＋ Neue Bewertung</a>
+</section>
+
+<div class="profile-grid">
+  <section class="card span-4">
+    <div class="card-head">
+      <div><span class="eyebrow">AKTUELLER SCHNITT</span><h2>Leistungsprofil</h2></div>
+    </div>
+    <div class="big-score">{{ averages.performance|floatformat:1|default:"–" }}<small>/10</small></div>
+    <div class="metric-bars compact">
+      <div><span>Mentalität <b>{{ averages.mentality|floatformat:1|default:"–" }}</b></span><i><em style="width:{% widthratio averages.mentality|default:0 10 100 %}%"></em></i></div>
+      <div><span>Physis <b>{{ averages.physicality|floatformat:1|default:"–" }}</b></span><i><em style="width:{% widthratio averages.physicality|default:0 10 100 %}%"></em></i></div>
+      <div><span>Potenzial <b>{{ averages.potential|floatformat:1|default:"–" }}</b></span><i><em style="width:{% widthratio averages.potential|default:0 10 100 %}%"></em></i></div>
+    </div>
+  </section>
+
+  <section class="card span-8">
+    <div class="card-head">
+      <div><span class="eyebrow">TRAINERBEWERTUNGEN</span><h2>Entwicklung</h2></div>
+    </div>
+    <div class="timeline">
+      {% for eval in evaluations %}
+        <div class="timeline-item">
+          <span class="timeline-dot"></span>
+          <div>
+            <strong>{{ eval.evaluated_at|date:"d.m.Y" }}</strong>
+            <p>{{ eval.comment|default:"Keine zusätzliche Notiz." }}</p>
+            <small>Gesamt {{ eval.performance }} · Mentalität {{ eval.mentality }} · Athletik {{ eval.physicality }} · Detail-Ø {{ eval.detailed_average }}</small>
+          </div>
+        </div>
+      {% empty %}
+        <div class="empty-state">Noch keine Bewertung vorhanden.</div>
+      {% endfor %}
+    </div>
+  </section>
+
+  {% with latest=evaluations.0 %}
+    {% if latest %}
+      <section class="card span-12 detailed-profile-card">
+        <div class="card-head detailed-profile-head">
+          <div>
+            <span class="eyebrow">LETZTE DETAILBEWERTUNG · {{ latest.evaluated_at|date:"d.m.Y" }}</span>
+            <h2>30 Kriterien im Überblick</h2>
+          </div>
+          <div class="detail-overall-score">
+            <strong>{{ latest.performance }}</strong><span>/10 Gesamtleistung</span>
+          </div>
+        </div>
+
+        <div class="profile-rating-groups">
+          {% for group in latest.grouped_scores %}
+            <details class="profile-rating-group" {% if forloop.first %}open{% endif %}>
+              <summary>
+                <span>{{ group.label }}</span>
+                <strong>{% if group.average %}{{ group.average }}{% else %}–{% endif %}</strong>
+              </summary>
+              <div class="profile-rating-items">
+                {% for item in group.items %}
+                  <div class="profile-rating-item">
+                    <span>{{ item.label }}</span>
+                    {% if item.value %}
+                      <div><i><em style="width:{% widthratio item.value 10 100 %}%"></em></i><b>{{ item.value }}</b></div>
+                    {% else %}
+                      <b>–</b>
+                    {% endif %}
+                  </div>
+                {% endfor %}
+              </div>
+            </details>
+          {% endfor %}
+        </div>
+      </section>
+    {% endif %}
+  {% endwith %}
+
+  <section class="card span-12">
+    <div class="card-head">
+      <div><span class="eyebrow">EINZELSPIELE</span><h2>Letzte Einsätze</h2></div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Spiel</th><th>Datum</th><th>Minuten</th><th>Ø</th><th>Kommentar</th></tr></thead>
+        <tbody>
+          {% for perf in matches %}
+            <tr>
+              <td><a href="{% url 'match_detail' perf.match.pk %}">vs. {{ perf.match.opponent }}</a></td>
+              <td>{{ perf.match.kickoff|date:"d.m.Y" }}</td>
+              <td>{{ perf.minutes_played }}′</td>
+              <td><span class="score-chip high">{{ perf.average }}</span></td>
+              <td>{{ perf.comment|default:"–" }}</td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="5">Noch kein Spieleinsatz erfasst.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>
+{% endblock %}

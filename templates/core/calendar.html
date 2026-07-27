@@ -1,0 +1,46 @@
+{% extends 'core/base.html' %}
+{% block title %}Kalender{% endblock %}
+{% block content %}
+<section class="page-head">
+  <div>
+    <span class="eyebrow">INTERNE ÜBERSICHT · KEINE API-FREIGABE</span>
+    <h1>Kalender</h1>
+    <p>Jeder Eintrag ist direkt verlinkt und kann mit einem Klick überarbeitet werden.</p>
+  </div>
+  <a href="{% url 'event_create' %}" class="btn btn-primary">＋ Termin hinzufügen</a>
+</section>
+
+<section class="card calendar-card">
+  <div class="calendar-toolbar">
+    <a href="?year={{ prev_year }}&month={{ prev_month }}" aria-label="Vorheriger Monat">←</a>
+    <h2>{{ month_name }} {{ year }}</h2>
+    <a href="?year={{ next_year }}&month={{ next_month }}" aria-label="Nächster Monat">→</a>
+  </div>
+  <div class="calendar-weekdays">
+    <span>Mo</span><span>Di</span><span>Mi</span><span>Do</span><span>Fr</span><span>Sa</span><span>So</span>
+  </div>
+  <div class="calendar-grid">
+    {% for week in weeks %}
+      {% for cell in week %}
+        <div class="calendar-day {% if not cell.day %}empty{% endif %}">
+          {% if cell.day %}
+            <strong>{{ cell.day }}</strong>
+            {% for event in cell.events %}
+              <a class="calendar-event calendar-event-link {{ event.event_type }}" href="{% url 'event_edit' event.pk %}" title="{{ event.title }} bearbeiten">
+                <b>{{ event.starts_at|date:"H:i" }}</b>
+                <span>{{ event.title }}</span>
+                <i aria-hidden="true">›</i>
+              </a>
+            {% endfor %}
+          {% endif %}
+        </div>
+      {% endfor %}
+    {% endfor %}
+  </div>
+</section>
+
+<div class="calendar-help no-print">
+  <span>Hinweis</span>
+  <p>Termin anklicken, Informationen ändern und speichern. Danach öffnet sich wieder der passende Monat.</p>
+</div>
+{% endblock %}

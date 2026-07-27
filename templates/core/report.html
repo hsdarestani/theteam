@@ -1,0 +1,49 @@
+{% extends 'core/base.html' %}
+{% block title %}Reports{% endblock %}
+{% block content %}
+<section class="page-head no-print">
+  <div><span class="eyebrow">VERTRAULICH · NUR INTERN</span><h1>Reports</h1><p>Gezielt suchen, filtern und nur den relevanten Bericht als PDF ausgeben.</p></div>
+  <button type="button" class="btn btn-primary" onclick="window.print()">⇩ PDF / Drucken</button>
+</section>
+
+<form method="get" class="report-filter-panel no-print">
+  <label><span>Report-Typ</span><select name="type">{% for key,label in report_types %}<option value="{{ key }}" {% if report_type == key %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
+  <label class="report-search"><span>Suchen</span><input name="q" value="{{ q }}" placeholder="Spieler, Gegner, Training, Ort …"></label>
+  <label><span>Von</span><input type="date" name="date_from" value="{{ date_from }}"></label>
+  <label><span>Bis</span><input type="date" name="date_to" value="{{ date_to }}"></label>
+  <label><span>Spieler</span><select name="player"><option value="">Alle Spieler</option>{% for player in players_options %}<option value="{{ player.pk }}" {% if selected_player_id == player.pk %}selected{% endif %}>#{{ player.shirt_number }} {{ player.full_name }}</option>{% endfor %}</select></label>
+  <label><span>Spiel</span><select name="match"><option value="">Relevantes / letztes Spiel</option>{% for item in matches_options %}<option value="{{ item.pk }}" {% if selected_match_id == item.pk %}selected{% endif %}>{{ item.kickoff|date:"d.m.Y" }} · vs. {{ item.opponent }}</option>{% endfor %}</select></label>
+  <div class="report-filter-actions"><button class="btn btn-primary">Report erstellen</button><a class="btn btn-secondary" href="{% url 'report' %}">Filter löschen</a></div>
+</form>
+
+<article class="report-sheet">
+  <header class="report-header"><div class="brand"><span class="brand-mark"><i></i><i></i></span><div><small>INTERNER TEAMREPORT</small><strong>Performance Hub</strong></div></div><div><span>Erstellt am</span><strong>{% now "d.m.Y · H:i" %}</strong></div></header>
+  <section class="report-title"><span class="eyebrow">{{ report_type|upper }} REPORT</span><h1>{{ report_title }}</h1><p>{{ report_subtitle }}</p>{% if q or date_from or date_to %}<div class="report-filter-note">Aktive Filter:{% if q %} Suche „{{ q }}“{% endif %}{% if date_from %} · ab {{ date_from }}{% endif %}{% if date_to %} · bis {{ date_to }}{% endif %}</div>{% endif %}</section>
+
+  <div class="report-kpis"><div><small>MENTALITÄT Ø</small><strong>{{ team_avg.mentality|floatformat:1|default:"–" }}</strong></div><div><small>PHYSIS Ø</small><strong>{{ team_avg.physicality|floatformat:1|default:"–" }}</strong></div><div><small>LEISTUNG Ø</small><strong>{{ team_avg.performance|floatformat:1|default:"–" }}</strong></div>{% if selected_match %}<div><small>SPIELERGEBNIS</small><strong>{{ selected_match.goals_for|default:"–" }} : {{ selected_match.goals_against|default:"–" }}</strong></div>{% endif %}</div>
+
+  {% if report_type == 'overview' or report_type == 'player' %}
+  <section class="report-section">
+    <h2>{% if selected_player %}Spielerprofil · {{ selected_player.full_name }}{% else %}Spielerübersicht{% endif %}</h2>
+    {% if selected_player %}
+      <div class="report-player-head"><div class="mini-avatar">{{ selected_player.initials }}</div><div><strong>#{{ selected_player.shirt_number }} {{ selected_player.full_name }}</strong><span>{{ selected_player.position }} · {{ selected_player.get_status_display }}</span></div></div>
+      <table><thead><tr><th>Datum</th><th>Mentalität</th><th>Physis</th><th>Leistung</th><th>Kommentar</th></tr></thead><tbody>{% for evaluation in selected_player_evaluations %}<tr><td>{{ evaluation.evaluated_at|date:"d.m.Y" }}</td><td>{{ evaluation.mentality }}</td><td>{{ evaluation.physicality }}</td><td>{{ evaluation.performance }}</td><td>{{ evaluation.comment|default:"–" }}</td></tr>{% empty %}<tr><td colspan="5">Keine Bewertungen im gewählten Zeitraum.</td></tr>{% endfor %}</tbody></table>
+      <h3 class="report-subheading">Spieleinsätze</h3><table><thead><tr><th>Spiel</th><th>Datum</th><th>Minuten</th><th>Leistung</th><th>Kommentar</th></tr></thead><tbody>{% for performance in selected_player_matches %}<tr><td>vs. {{ performance.match.opponent }}</td><td>{{ performance.match.kickoff|date:"d.m.Y" }}</td><td>{{ performance.minutes_played }}′</td><td>{{ performance.performance }}</td><td>{{ performance.comment|default:"–" }}</td></tr>{% empty %}<tr><td colspan="5">Keine Spieleinsätze im gewählten Zeitraum.</td></tr>{% endfor %}</tbody></table>
+    {% else %}
+      <table><thead><tr><th>Spieler</th><th>Position</th><th>Mentalität Ø</th><th>Physis Ø</th><th>Leistung Ø</th></tr></thead><tbody>{% for player in report_players %}<tr><td><a href="?type=player&player={{ player.pk }}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}">#{{ player.shirt_number }} {{ player.full_name }}</a></td><td>{{ player.position }}</td><td>{{ player.avg_mentality|floatformat:1|default:"–" }}</td><td>{{ player.avg_physicality|floatformat:1|default:"–" }}</td><td><strong>{{ player.avg_performance|floatformat:1|default:"–" }}</strong></td></tr>{% empty %}<tr><td colspan="5">Keine Spieler gefunden.</td></tr>{% endfor %}</tbody></table>
+    {% endif %}
+  </section>
+  {% endif %}
+
+  {% if report_type == 'overview' or report_type == 'training' %}
+  <section class="report-section"><h2>Trainingsübersicht</h2><table><thead><tr><th>Datum</th><th>Einheit</th><th>Ort</th><th>Fokus</th><th>Status</th></tr></thead><tbody>{% for training in recent_training %}<tr><td>{{ training.starts_at|date:"d.m.Y · H:i" }}</td><td>{{ training.title }}</td><td>{{ training.location|default:"–" }}</td><td>{{ training.focus|default:"–" }}</td><td>{{ training.get_status_display }}</td></tr>{% empty %}<tr><td colspan="5">Keine Trainings für diese Filter gefunden.</td></tr>{% endfor %}</tbody></table></section>
+  {% endif %}
+
+  {% if report_type == 'overview' or report_type == 'match' %}
+  <section class="report-section"><h2>{% if selected_match %}Spielbericht · vs. {{ selected_match.opponent }}{% else %}Spielberichte{% endif %}</h2>{% if selected_match %}<div class="report-match"><div><small>{{ selected_match.competition|default:"Spiel" }}</small><strong>Team vs. {{ selected_match.opponent }}</strong><span>{{ selected_match.kickoff|date:"d.m.Y · H:i" }} · {{ selected_match.location|default:"Ort offen" }}</span></div><div class="report-score">{{ selected_match.goals_for|default:"–" }} : {{ selected_match.goals_against|default:"–" }}</div></div><table><thead><tr><th>Spieler</th><th>Minuten</th><th>Mentalität</th><th>Physis</th><th>Leistung</th><th>Kommentar</th></tr></thead><tbody>{% for performance in selected_match.performances.all %}<tr><td>{{ performance.player.full_name }}</td><td>{{ performance.minutes_played }}′</td><td>{{ performance.mentality }}</td><td>{{ performance.physicality }}</td><td>{{ performance.performance }}</td><td>{{ performance.comment|default:"–" }}</td></tr>{% empty %}<tr><td colspan="6">Noch keine Spielerleistungen erfasst.</td></tr>{% endfor %}</tbody></table>{% else %}<div class="empty-state">Kein passendes Spiel gefunden.</div>{% endif %}{% if report_type == 'match' and filtered_matches %}<h3 class="report-subheading no-print">Gefundene Spiele</h3><div class="report-result-links no-print">{% for item in filtered_matches %}<a href="?type=match&match={{ item.pk }}{% if q %}&q={{ q|urlencode }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}"><span>{{ item.kickoff|date:"d.m.Y" }}</span><strong>vs. {{ item.opponent }}</strong></a>{% endfor %}</div>{% endif %}</section>
+  {% endif %}
+
+  <section class="report-section report-comment"><h2>Kommentar zum Report</h2><div class="report-note">{{ note.note|default:"Noch kein Kommentar hinterlegt."|linebreaksbr }}</div><form method="post" class="no-print report-note-form">{% csrf_token %}{{ note_form.note }}<button class="btn btn-secondary">Kommentar speichern</button></form></section>
+  <footer><span>Vertraulich – nur für den internen Gebrauch</span><span>Keine Weitergabe an Dritte</span></footer>
+</article>
+{% endblock %}

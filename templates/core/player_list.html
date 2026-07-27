@@ -1,0 +1,44 @@
+{% extends 'core/base.html' %}
+{% block title %}Kader{% endblock %}
+{% block content %}
+<section class="page-head">
+  <div>
+    <span class="eyebrow">KADERÜBERSICHT</span>
+    <h1>Kader klar sortiert.</h1>
+    <p>Nach Mannschaftsteil, Trikotnummer oder Leistungsbewertung filtern.</p>
+  </div>
+  <a href="{% url 'player_create' %}" class="btn btn-primary">＋ Spieler hinzufügen</a>
+</section>
+
+<form class="squad-filter-panel" method="get">
+  <label class="filter-search"><span>Spieler suchen</span><input name="q" value="{{ q }}" placeholder="Name, Position oder Nummer"></label>
+  <label><span>Mannschaftsteil</span><select name="position"><option value="all" {% if position_filter == 'all' %}selected{% endif %}>Alle Positionen</option>{% for key,label,tokens in position_groups %}<option value="{{ key }}" {% if position_filter == key %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
+  <label><span>Sortierung</span><select name="sort"><option value="position" {% if sort == 'position' %}selected{% endif %}>Position, dann Trikotnummer</option><option value="number" {% if sort == 'number' %}selected{% endif %}>Trikotnummer</option><option value="rating_desc" {% if sort == 'rating_desc' %}selected{% endif %}>Beste Bewertung zuerst</option><option value="rating_asc" {% if sort == 'rating_asc' %}selected{% endif %}>Niedrigste Bewertung zuerst</option></select></label>
+  <label><span>Bewertungsfilter</span><select name="rating"><option value="all" {% if rating_filter == 'all' %}selected{% endif %}>Alle Spieler</option><option value="top" {% if rating_filter == 'top' %}selected{% endif %}>Top 5 Spieler</option><option value="bottom" {% if rating_filter == 'bottom' %}selected{% endif %}>Niedrigste 5</option></select></label>
+  <button class="btn btn-primary">Anwenden</button>
+  <a class="btn btn-secondary" href="{% url 'players' %}">Zurücksetzen</a>
+</form>
+
+<div class="filter-summary"><strong>{{ result_count }}</strong><span>Spieler im Ergebnis</span>{% if rating_filter == 'top' %}<em>Top Spieler</em>{% elif rating_filter == 'bottom' %}<em>Niedrigste Bewertung</em>{% endif %}</div>
+
+{% if player_sections %}
+  <div class="squad-sections">
+    {% for section in player_sections %}
+      <section class="squad-section">
+        <header><div><span class="eyebrow">MANNSCHAFTSTEIL</span><h2>{{ section.label }}</h2></div><strong>{{ section.players|length }}</strong></header>
+        <div class="player-grid">
+          {% for player in section.players %}
+            <article class="player-card"><a href="{% url 'player_detail' player.pk %}" class="player-card-main"><div class="player-card-top"><div class="player-avatar">{{ player.initials }}</div><span class="shirt-number">{{ player.shirt_number }}</span></div><div class="player-info"><span class="status-dot {{ player.status }}">{{ player.get_status_display }}</span><h2>{{ player.full_name }}</h2><p>{{ player.position }}</p></div><div class="player-scores"><div><small>Mentalität</small><strong>{{ player.avg_mentality|floatformat:1|default:"–" }}</strong></div><div><small>Physis</small><strong>{{ player.avg_physicality|floatformat:1|default:"–" }}</strong></div><div class="primary-score"><small>Leistung</small><strong>{{ player.avg_performance|floatformat:1|default:"–" }}</strong></div></div></a><a class="quick-evaluate" href="{% url 'evaluate_player' player.pk %}">＋ Bewertung</a></article>
+          {% endfor %}
+        </div>
+      </section>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="player-grid">
+    {% for player in players %}
+      <article class="player-card"><a href="{% url 'player_detail' player.pk %}" class="player-card-main"><div class="player-card-top"><div class="player-avatar">{{ player.initials }}</div><span class="shirt-number">{{ player.shirt_number }}</span></div><div class="player-info"><span class="status-dot {{ player.status }}">{{ player.get_status_display }}</span><h2>{{ player.full_name }}</h2><p>{{ player.position_group_label }} · {{ player.position }}</p></div><div class="player-scores"><div><small>Mentalität</small><strong>{{ player.avg_mentality|floatformat:1|default:"–" }}</strong></div><div><small>Physis</small><strong>{{ player.avg_physicality|floatformat:1|default:"–" }}</strong></div><div class="primary-score"><small>Leistung</small><strong>{{ player.avg_performance|floatformat:1|default:"–" }}</strong></div></div></a><a class="quick-evaluate" href="{% url 'evaluate_player' player.pk %}">＋ Bewertung</a></article>
+    {% empty %}<div class="empty-card">Kein Spieler entspricht den Filtern.</div>{% endfor %}
+  </div>
+{% endif %}
+{% endblock %}

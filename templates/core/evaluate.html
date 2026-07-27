@@ -1,0 +1,92 @@
+{% extends 'core/base.html' %}
+{% block title %}{{ player.full_name }} bewerten{% endblock %}
+{% block content %}
+<div class="back-row"><a href="{% url 'player_detail' player.pk %}">← Zurück zum Spielerprofil</a></div>
+
+<section class="form-layout evaluation-layout">
+  <div class="form-intro evaluation-intro">
+    <span class="eyebrow">DETAILBEWERTUNG</span>
+    <div class="evaluation-player">
+      <span class="player-avatar">{{ player.initials }}</span>
+      <div>
+        <h1>{{ player.full_name }}</h1>
+        <p>#{{ player.shirt_number }} · {{ player.position }}</p>
+      </div>
+    </div>
+    <h2>30 Kriterien. Klar in sechs Bereichen.</h2>
+    <p>Alle Werte starten bei 7. Öffne nur die Bereiche, die du differenzierter bewerten möchtest, und speichere anschließend das vollständige Profil.</p>
+
+    <div class="evaluation-legend">
+      <span><b>1–3</b> Entwicklungsbedarf</span>
+      <span><b>4–6</b> solide</span>
+      <span><b>7–8</b> stark</span>
+      <span><b>9–10</b> außergewöhnlich</span>
+    </div>
+
+    <div class="tip-box">
+      <strong>Schneller arbeiten</strong>
+      <span>Bereiche sind auf dem Smartphone einklappbar.</span>
+      <span>Der Durchschnitt jedes Bereichs aktualisiert sich sofort.</span>
+      <span>„Alle auf 7“ setzt das Formular jederzeit zurück.</span>
+    </div>
+  </div>
+
+  <form method="post" class="card evaluation-form evaluation-form-detailed" data-detailed-evaluation>
+    {% csrf_token %}
+
+    {% if form.non_field_errors %}
+      <div class="form-error-summary">{{ form.non_field_errors }}</div>
+    {% endif %}
+
+    <div class="evaluation-toolbar">
+      <div>
+        <strong>Leistungsprofil</strong>
+        <span>30 Kriterien · Skala 1 bis 10</span>
+      </div>
+      <button class="btn btn-secondary btn-small" type="button" data-set-all="7">Alle auf 7</button>
+    </div>
+
+    <div class="rating-groups">
+      {% for group in form.grouped_fields %}
+        <details class="rating-group" data-rating-details="{{ group.slug }}" {% if forloop.first %}open{% endif %}>
+          <summary>
+            <span>
+              <small>BEREICH {{ forloop.counter|stringformat:"02d" }}</small>
+              <strong>{{ group.label }}</strong>
+            </span>
+            <span class="group-summary-score">
+              <b data-group-average="{{ group.slug }}">7,0</b>
+              <small>/10 · {{ group.fields|length }} Kriterien</small>
+            </span>
+          </summary>
+
+          <div class="rating-group-body">
+            {% for field in group.fields %}
+              <div class="range-field rating-row">
+                <div class="rating-row-head">
+                  <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                  <output data-output-for="{{ field.id_for_label }}">{{ field.value|default:7 }}</output>
+                </div>
+                {{ field }}
+                <div class="range-scale" aria-hidden="true"><span>1</span><span>5</span><span>10</span></div>
+                {% if field.errors %}<small class="error">{{ field.errors|striptags }}</small>{% endif %}
+              </div>
+            {% endfor %}
+          </div>
+        </details>
+      {% endfor %}
+    </div>
+
+    <div class="evaluation-comment">
+      <label for="{{ form.comment.id_for_label }}">{{ form.comment.label }}</label>
+      {{ form.comment }}
+      {% if form.comment.errors %}<small class="error">{{ form.comment.errors|striptags }}</small>{% endif %}
+    </div>
+
+    <div class="form-actions evaluation-actions">
+      <a href="{% url 'player_detail' player.pk %}" class="btn btn-secondary">Abbrechen</a>
+      <button class="btn btn-primary" type="submit">Bewertung speichern</button>
+    </div>
+  </form>
+</section>
+{% endblock %}

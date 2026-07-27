@@ -1,0 +1,107 @@
+{% extends 'core/base.html' %}
+{% block title %}vs. {{ match.opponent }}{% endblock %}
+{% block content %}
+<div class="back-row"><a href="{% url 'matches' %}">← Zurück zu den Spielen</a></div>
+
+<section class="match-hero">
+  <div>
+    <span class="eyebrow">{{ match.competition|default:"EINZELSPIEL" }}</span>
+    <h1>Team <em>vs.</em> {{ match.opponent }}</h1>
+    <p>{{ match.kickoff|date:"l, d.m.Y · H:i" }} · {{ match.location|default:"Ort offen" }}</p>
+  </div>
+  <div class="hero-score">
+    {% if match.goals_for != None %}
+      <strong>{{ match.goals_for }}<span>:</span>{{ match.goals_against }}</strong><small>Endstand</small>
+    {% else %}
+      <strong>–</strong><small>Ergebnis offen</small>
+    {% endif %}
+  </div>
+</section>
+
+<div class="detail-grid match-rating-layout">
+  <section class="card span-12">
+    <div class="card-head">
+      <div><span class="eyebrow">SPIELERLEISTUNG</span><h2>Erfasste Bewertungen</h2></div>
+      <small>Ein gemeinsames 30-Kriterien-System im gesamten Teamboard</small>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Spieler</th><th>Min.</th><th>Gesamt</th><th>Mentalität</th><th>Physis</th><th>Profil</th><th>Aktion</th></tr></thead>
+        <tbody>
+          {% for perf in performances %}
+          <tr>
+            <td><a class="person-cell" href="{% url 'player_detail' perf.player.pk %}"><span class="mini-avatar">{{ perf.player.initials }}</span><div><strong>{{ perf.player.full_name }}</strong><small>{{ perf.comment|default:perf.player.position }}</small></div></a></td>
+            <td>{{ perf.minutes_played }}′</td>
+            <td><span class="score-chip high">{{ perf.performance }}</span></td>
+            <td>{{ perf.mentality }}</td>
+            <td>{{ perf.physicality }}</td>
+            <td>{% if perf.detailed_profile %}<span class="rating-status detailed">30 Kriterien</span>{% else %}<span class="rating-status legacy">Schnellbewertung</span>{% endif %}</td>
+            <td><a class="table-action" href="?player={{ perf.player_id }}#spielbewertung">Bearbeiten →</a></td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="7">Noch keine Leistung erfasst.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="card span-12 match-rating-editor" id="spielbewertung">
+    <div class="card-head match-rating-editor-head">
+      <div>
+        <span class="eyebrow">{% if editing_performance %}BEWERTUNG BEARBEITEN{% else %}SPIELER BEWERTEN{% endif %}</span>
+        <h2>30 Kriterien · einheitlich mit dem Kaderprofil</h2>
+        <p>Alle Werte starten bei 7. Öffne nur die Bereiche, die du anpassen möchtest.</p>
+      </div>
+      {% if editing_performance %}<a href="{% url 'match_detail' match.pk %}#spielbewertung" class="btn btn-secondary btn-small">Neue Bewertung</a>{% endif %}
+    </div>
+
+    <form method="post" class="evaluation-form-detailed match-detailed-form" data-detailed-evaluation>
+      {% csrf_token %}
+      {% if form.non_field_errors %}<div class="form-error-summary">{{ form.non_field_errors }}</div>{% endif %}
+
+      <div class="match-rating-context">
+        <label for="{{ form.player.id_for_label }}"><span>{{ form.player.label }}</span>{{ form.player }}{% if form.player.errors %}<small class="error">{{ form.player.errors|striptags }}</small>{% endif %}</label>
+        <label for="{{ form.minutes_played.id_for_label }}"><span>{{ form.minutes_played.label }}</span>{{ form.minutes_played }}{% if form.minutes_played.errors %}<small class="error">{{ form.minutes_played.errors|striptags }}</small>{% endif %}</label>
+      </div>
+
+      <div class="evaluation-toolbar">
+        <div><strong>Leistungsprofil im Spiel</strong><span>Dieselben sechs Bereiche und 30 Kriterien wie im Kader</span></div>
+        <button class="btn btn-secondary btn-small" type="button" data-set-all="7">Alle auf 7</button>
+      </div>
+
+      <div class="rating-groups match-rating-groups">
+        {% for group in form.grouped_fields %}
+        <details class="rating-group" data-rating-details="{{ group.slug }}" {% if forloop.first %}open{% endif %}>
+          <summary>
+            <span><small>BEREICH {{ forloop.counter|stringformat:"02d" }}</small><strong>{{ group.label }}</strong></span>
+            <span class="group-summary-score"><b data-group-average="{{ group.slug }}">7,0</b><small>/10 · {{ group.fields|length }} Kriterien</small></span>
+          </summary>
+          <div class="rating-group-body">
+            {% for field in group.fields %}
+            <div class="range-field rating-row">
+              <div class="rating-row-head"><label for="{{ field.id_for_label }}">{{ field.label }}</label><output data-output-for="{{ field.id_for_label }}">{{ field.value|default:7 }}</output></div>
+              {{ field }}
+              <div class="range-scale" aria-hidden="true"><span>1</span><span>5</span><span>10</span></div>
+              {% if field.errors %}<small class="error">{{ field.errors|striptags }}</small>{% endif %}
+            </div>
+            {% endfor %}
+          </div>
+        </details>
+        {% endfor %}
+      </div>
+
+      <div class="evaluation-comment">
+        <label for="{{ form.comment.id_for_label }}">{{ form.comment.label }}</label>
+        {{ form.comment }}
+        {% if form.comment.errors %}<small class="error">{{ form.comment.errors|striptags }}</small>{% endif %}
+      </div>
+
+      <div class="form-actions evaluation-actions match-rating-actions">
+        {% if editing_performance %}<a href="{% url 'match_detail' match.pk %}" class="btn btn-secondary">Abbrechen</a>{% endif %}
+        <button class="btn btn-primary" type="submit">{% if editing_performance %}Bewertung aktualisieren{% else %}Leistung speichern{% endif %}</button>
+      </div>
+    </form>
+  </section>
+</div>
+{% endblock %}
