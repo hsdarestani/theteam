@@ -95,8 +95,10 @@ class TeamIdentity(models.Model):
             raise ValidationError(errors)
 
     def save(self, *args, **kwargs):
+        # The identity is a true singleton: creating another instance replaces
+        # the single row instead of failing primary-key validation.
         self.pk = 1
-        self.full_clean()
+        self.full_clean(exclude=[self._meta.pk.name])
         return super().save(*args, **kwargs)
 
     def delete(self, *args, **kwargs):
