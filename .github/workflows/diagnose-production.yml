@@ -13,7 +13,7 @@ jobs:
     if: github.event.issue.title == 'Diagnose production 500'
     runs-on: ubuntu-latest
     steps:
-      - name: Collect production logs
+      - name: Collect production logs and reproduce save
         shell: bash
         env:
           HOST: ${{ secrets.HOST }}
@@ -22,6 +22,41 @@ jobs:
           set -euo pipefail
           sudo apt-get update >/dev/null
           sudo apt-get install -y sshpass >/dev/null
+
+          cat > /tmp/reproduce.py <<'PY'
+          from django.db import transaction
+          from core.admin import TeamIdentityAdminForm
+          from core.identity_models import TeamIdentity
+
+          identity = TeamIdentity.load()
+          data = {
+              "team_name": "Hull City A.F.C.",
+              "short_name": "HULL CITY",
+              "app_name": "Hull City Performance Hub",
+              "tagline": "Training, squad and performance in one place.",
+              "language": "en",
+              "custom_language_code": "",
+              "direction": "ltr",
+              "custom_translations": "{}",
+              "primary_color": "#F5A623",
+              "primary_dark_color": "#D88900",
+              "secondary_color": "#111111",
+              "background_color": "#F4F4F3",
+              "surface_color": "#FFFFFF",
+              "text_color": "#171717",
+              "custom_css": ".btn-primary, .mobile-primary { color: #111111 !important; }\n.accent-card { color: #111111 !important; }\n.accent-card .eyebrow, .accent-card p, .accent-card .focus-label { color: #2a210f !important; }\n.btn-white { background: #111111 !important; color: #ffffff !important; }\n.nav a.active span, .card-head > a, .eyebrow { color: #F5A623; }",
+          }
+          form = TeamIdentityAdminForm(data=data, files={}, instance=identity)
+          print("FORM_VALID:", form.is_valid())
+          print("FORM_ERRORS:", form.errors.as_json())
+          if form.is_valid():
+              with transaction.atomic():
+                  saved = form.save()
+                  print("SAVE_OK:", saved.pk, saved.team_name, saved.logo.name)
+                  transaction.set_rollback(True)
+          PY
+          REPRO_B64=$(base64 -w0 /tmp/reproduce.py)
+
           sshpass -p "$PASS" ssh \
             -o StrictHostKeyChecking=no \
             -o UserKnownHostsFile=/dev/null \
@@ -32,12 +67,21 @@ jobs:
               echo "=== CONTAINERS ===";
               docker compose ps;
               echo "=== WEB LOGS ===";
-              docker compose logs --since=45m --tail=700 web;
-              echo "=== CADDY LOGS ===";
-              docker compose logs --since=45m --tail=300 caddy;
+              docker compose logs --since=60m --tail=900 web;
+              echo "=== CADDY 500 REQUESTS ===";
+              docker compose logs --since=60m --tail=800 caddy | grep -E "status.*500|ERROR" || true;
               echo "=== MEDIA STATE ===";
               docker compose exec -T web sh -lc "find /app/media -maxdepth 3 -type f -printf \"%p %s bytes\\n\" 2>/dev/null | tail -50";
             }' > production-diagnostic.log 2>&1
+
+          {
+            echo "=== HULL CITY FORM REPRODUCTION (ROLLED BACK) ==="
+            sshpass -p "$PASS" ssh \
+              -o StrictHostKeyChecking=no \
+              -o UserKnownHostsFile=/dev/null \
+              root@"$HOST" \
+              "cd /opt/theteam && echo '$REPRO_B64' | base64 -d | docker compose exec -T web python manage.py shell"
+          } >> production-diagnostic.log 2>&1
 
       - name: Upload diagnostic artifact
         uses: actions/upload-artifact@v4
