@@ -4,10 +4,6 @@ on:
   workflow_dispatch:
   issues:
     types: [opened]
-  push:
-    branches: [main]
-    paths:
-      - ".github/workflows/bootstrap-theteam.yml"
 
 permissions:
   contents: write
@@ -17,7 +13,7 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  apply-and-validate:
+  apply-branding:
     if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
@@ -35,25 +31,6 @@ jobs:
           tar -tzf /tmp/theteam-branding-patch.tar.gz >/dev/null
           tar -xzf /tmp/theteam-branding-patch.tar.gz -C .
           rm -rf .theteam-patch
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-          cache: pip
-
-      - name: Validate application
-        shell: bash
-        env:
-          DJANGO_SECRET_KEY: ci-only-secret-key
-          DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1,team.smarbiz.sbs
-        run: |
-          set -euo pipefail
-          pip install -r requirements.txt
-          python manage.py makemigrations --check
-          python manage.py check
-          python manage.py test
-          python manage.py collectstatic --noinput
 
       - name: Publish branding layer
         shell: bash
