@@ -40,7 +40,7 @@ class TeamIdentityTests(TestCase):
         self.assertContains(response, 'dir="rtl"')
         self.assertContains(response, "النادي الأهلي")
         self.assertContains(response, "#0b6b3a")
-        self.assertContains(response, "نظرة عامة")
+        self.assertContains(response, "لوحة التحكم")
 
     def test_custom_translation_override_is_applied(self):
         identity = TeamIdentity.load()
