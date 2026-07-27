@@ -1,6 +1,7 @@
 import tempfile
 
 from django.contrib.auth import get_user_model
+from django.core.files.base import ContentFile
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 from django.urls import reverse
@@ -64,8 +65,6 @@ class TeamIdentityTests(TestCase):
         self.assertNotIn("مباراةvorbereitung", translated)
 
     def test_admin_can_upload_and_read_a_team_logo(self):
-        # FileField validation only needs a correctly named uploaded file; the
-        # PNG header keeps this fixture representative without adding binaries.
         logo = SimpleUploadedFile(
             "al-nassr.png",
             b"\x89PNG\r\n\x1a\nlogo-test-payload",
@@ -103,6 +102,47 @@ class TeamIdentityTests(TestCase):
             self.assertEqual(logo_response.status_code, 200)
             self.assertEqual(logo_response["Content-Type"], "image/png")
             logo_response.close()
+
+    def test_hull_city_admin_save_preserves_existing_logo_without_500(self):
+        with tempfile.TemporaryDirectory() as media_root, self.settings(MEDIA_ROOT=media_root):
+            identity = TeamIdentity.load()
+            identity.logo.save(
+                "existing-club.png",
+                ContentFile(b"\x89PNG\r\n\x1a\nexisting-logo"),
+                save=True,
+            )
+            original_logo_name = identity.logo.name
+
+            response = self.client.post(
+                reverse("admin:core_teamidentity_change", args=[1]),
+                {
+                    "team_name": "Hull City A.F.C.",
+                    "short_name": "HULL CITY",
+                    "app_name": "Hull City Performance Hub",
+                    "tagline": "Training, squad and performance in one place.",
+                    "language": TeamIdentity.Language.ENGLISH,
+                    "custom_language_code": "",
+                    "direction": TeamIdentity.Direction.LTR,
+                    "primary_color": "#f5a623",
+                    "primary_dark_color": "#d88900",
+                    "secondary_color": "#111111",
+                    "background_color": "#f4f4f3",
+                    "surface_color": "#ffffff",
+                    "text_color": "#171717",
+                    "custom_translations": "{}",
+                    "custom_css": (
+                        ".btn-primary,.mobile-primary{color:#111!important;}"
+                        ".accent-card{color:#111!important;}"
+                    ),
+                    "_continue": "1",
+                },
+            )
+
+            self.assertEqual(response.status_code, 302)
+            identity.refresh_from_db()
+            self.assertEqual(identity.team_name, "Hull City A.F.C.")
+            self.assertEqual(identity.language, TeamIdentity.Language.ENGLISH)
+            self.assertEqual(identity.logo.name, original_logo_name)
 
     def test_admin_identity_list_redirects_to_singleton_change_form(self):
         response = self.client.get(reverse("admin:core_teamidentity_changelist"))
