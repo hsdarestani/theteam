@@ -4,12 +4,9 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-  issues:
-    types: [opened]
 
 permissions:
   contents: read
-  issues: write
 
 concurrency:
   group: theteam-production
@@ -17,7 +14,6 @@ concurrency:
 
 jobs:
   validate-and-deploy:
-    if: github.event_name != 'issues' || github.event.issue.title == 'Deploy The Team production'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout source
@@ -30,42 +26,19 @@ jobs:
           cache: pip
 
       - name: Validate Django application
-        id: validate
-        continue-on-error: true
         shell: bash
         env:
           DJANGO_SECRET_KEY: ci-only-secret-key
           DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1,team.smarbiz.sbs
         run: |
-          set -o pipefail
-          {
-            set -euo pipefail
-            pip install -r requirements.txt
-            python manage.py makemigrations --check
-            python manage.py check
-            python manage.py test
-            python manage.py collectstatic --noinput
-          } 2>&1 | tee /tmp/theteam-validation.log
-
-      - name: Publish validation error
-        if: always() && steps.validate.outcome == 'failure' && github.event_name == 'issues'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const fs = require('fs');
-            const path = '/tmp/theteam-validation.log';
-            const raw = fs.existsSync(path) ? fs.readFileSync(path, 'utf8') : 'Validation log was not created.';
-            const tail = raw.slice(-12000);
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-              body: `Django validation failed:\n\n\`\`\`text\n${tail}\n\`\`\``,
-            });
+          set -euo pipefail
+          pip install -r requirements.txt
+          python manage.py makemigrations --check
+          python manage.py check
+          python manage.py test
+          python manage.py collectstatic --noinput
 
       - name: Deploy via SSH
-        id: deploy
-        if: steps.validate.outcome == 'success'
         uses: appleboy/ssh-action@v1.2.2
         with:
           host: ${{ secrets.HOST }}
@@ -137,9 +110,6 @@ jobs:
             exit 1
 
       - name: Verify public HTTPS endpoint
-        id: public
-        if: steps.validate.outcome == 'success' && steps.deploy.outcome == 'success'
-        continue-on-error: true
         shell: bash
         run: |
           set -euo pipefail
@@ -152,25 +122,3 @@ jobs:
           done
           echo "The public HTTPS health endpoint did not become reachable."
           exit 1
-
-      - name: Publish workflow result
-        if: always() && github.event_name == 'issues'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const validation = '${{ steps.validate.outcome }}';
-            const deployment = '${{ steps.deploy.outcome }}';
-            const publicEndpoint = '${{ steps.public.outcome }}';
-            const runId = '${{ github.run_id }}';
-            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${runId}`;
-            const succeeded = validation === 'success' && deployment === 'success' && publicEndpoint === 'success';
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-              body: `Workflow **${succeeded ? 'success' : 'failure'}**. Validation: \`${validation}\`. Deployment: \`${deployment}\`. Public HTTPS: \`${publicEndpoint}\`.\n\nRun ID: \`${runId}\`\n\n${runUrl}`,
-            });
-
-      - name: Fail incomplete deployment
-        if: steps.validate.outcome == 'failure' || steps.public.outcome == 'failure'
-        run: exit 1
