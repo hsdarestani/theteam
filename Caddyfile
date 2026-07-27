@@ -1,6 +1,16 @@
 team.smarbiz.sbs {
     encode zstd gzip
-    reverse_proxy web:8000
+
+    handle_path /media/* {
+        root * /srv/media
+        file_server
+        header Cache-Control "public, max-age=3600"
+    }
+
+    handle {
+        reverse_proxy web:8000
+    }
+
     header {
         Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
         X-Content-Type-Options "nosniff"
@@ -9,6 +19,7 @@ team.smarbiz.sbs {
         Permissions-Policy "camera=(), microphone=(), geolocation=()"
         -Server
     }
+
     log {
         output stdout
         format console
