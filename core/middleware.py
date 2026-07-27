@@ -4,7 +4,7 @@ from django.shortcuts import redirect
 from django.urls import reverse
 from django.utils import translation
 
-from .branding import translate_content
+from .html_translation import translate_html_content
 from .identity_models import TeamIdentity
 
 
@@ -37,7 +37,7 @@ class BrandingLanguageMiddleware:
                 ):
                     charset = response.charset or "utf-8"
                     content = response.content.decode(charset)
-                    content = translate_content(
+                    content = translate_html_content(
                         content,
                         identity.resolved_language,
                         identity.custom_translations,
@@ -55,7 +55,7 @@ class InitialSetupMiddleware:
 
     def __call__(self, request):
         allowed = {reverse("setup"), reverse("health"), reverse("team_logo")}
-        if request.path.startswith("/static/") or request.path.startswith("/admin/"):
+        if request.path.startswith("/static/") or request.path.startswith("/media/") or request.path.startswith("/admin/"):
             return self.get_response(request)
         if request.path not in allowed and not get_user_model().objects.exists():
             return redirect("setup")
