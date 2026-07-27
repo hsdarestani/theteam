@@ -136,6 +136,23 @@ jobs:
             docker compose logs --tail=250
             exit 1
 
+      - name: Verify public HTTPS endpoint
+        id: public
+        if: steps.validate.outcome == 'success' && steps.deploy.outcome == 'success'
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 30); do
+            if response=$(curl -fsS --connect-timeout 10 --max-time 20 https://team.smarbiz.sbs/health/); then
+              echo "$response"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "The public HTTPS health endpoint did not become reachable."
+          exit 1
+
       - name: Publish workflow result
         if: always() && github.event_name == 'issues'
         uses: actions/github-script@v7
@@ -143,16 +160,17 @@ jobs:
           script: |
             const validation = '${{ steps.validate.outcome }}';
             const deployment = '${{ steps.deploy.outcome }}';
+            const publicEndpoint = '${{ steps.public.outcome }}';
             const runId = '${{ github.run_id }}';
             const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${runId}`;
-            const succeeded = validation === 'success' && deployment === 'success';
+            const succeeded = validation === 'success' && deployment === 'success' && publicEndpoint === 'success';
             await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.issue.number,
-              body: `Workflow **${succeeded ? 'success' : 'failure'}**. Validation: \`${validation}\`. Deployment: \`${deployment}\`.\n\nRun ID: \`${runId}\`\n\n${runUrl}`,
+              body: `Workflow **${succeeded ? 'success' : 'failure'}**. Validation: \`${validation}\`. Deployment: \`${deployment}\`. Public HTTPS: \`${publicEndpoint}\`.\n\nRun ID: \`${runId}\`\n\n${runUrl}`,
             });
 
-      - name: Fail when validation failed
-        if: steps.validate.outcome == 'failure'
+      - name: Fail incomplete deployment
+        if: steps.validate.outcome == 'failure' || steps.public.outcome == 'failure'
         run: exit 1
