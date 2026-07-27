@@ -12,6 +12,7 @@
   <link rel="stylesheet" href="{% static 'css/dashboard-brand.css' %}">
   <link rel="stylesheet" href="{% static 'css/match-ratings.css' %}">
   <link rel="stylesheet" href="{% static 'css/management.css' %}">
+  {% if team_identity.resolved_direction == 'rtl' %}<link rel="stylesheet" href="{% static 'css/rtl.css' %}">{% endif %}
   <style>
     :root{
       --bg:{{ team_identity.background_color }};
@@ -25,23 +26,8 @@
     .team-logo{width:42px;height:42px;object-fit:contain;display:block;flex:0 0 auto}
     .dashboard-club-logo.team-configured-logo{object-fit:contain;background:transparent}
     .report-team-logo{width:42px;height:42px;object-fit:contain;margin-inline-end:10px}
-    html[dir="rtl"] body{font-family:Tahoma,"Segoe UI",Arial,sans-serif}
-    html[dir="rtl"] .app-shell{grid-template-columns:1fr 250px}
-    html[dir="rtl"] .sidebar{inset:0 0 0 auto}
-    html[dir="rtl"] .main{grid-column:1}
-    html[dir="rtl"] .nav a.active{box-shadow:inset -3px 0 var(--red)}
-    html[dir="rtl"] .messages{right:auto;left:28px}
-    html[dir="rtl"] th{text-align:right}
-    html[dir="rtl"] .row-arrow{transform:scaleX(-1)}
-    html[dir="rtl"] .quick-item{border-right:0;border-left:1px solid var(--line)}
-    html[dir="rtl"] .quick-item:last-child{border-left:0}
-    html[dir="rtl"] .player-scores>div{border-right:0;border-left:1px solid var(--line)}
-    html[dir="rtl"] .player-scores>div:last-child{border-left:0}
-    @media(max-width:980px){
-      html[dir="rtl"] .app-shell{display:block}
-      html[dir="rtl"] .sidebar{left:auto;right:0;transform:translateX(110%)}
-      html[dir="rtl"] .sidebar.open{transform:translateX(0)}
-    }
+    .accent-card{background:linear-gradient(145deg,var(--red),var(--red-dark))}
+    .metric-bars i em{background:linear-gradient(90deg,var(--red),var(--red-dark))}
     {{ team_identity.custom_css|safe }}
   </style>
 </head>
@@ -50,7 +36,7 @@
   <aside class="sidebar" id="sidebar">
     <div class="brand">
       {% if team_identity.logo %}
-        <img src="{% url 'team_logo' %}" alt="{{ team_identity.team_name }}" class="team-logo">
+        <img src="{{ team_identity.logo.url }}" alt="{{ team_identity.team_name }}" class="team-logo">
       {% else %}
         <span class="brand-mark"><i></i><i></i></span>
       {% endif %}
@@ -68,9 +54,9 @@
     {% if nav_next_event %}
     <div class="sidebar-next">
       <span class="eyebrow">{{ ui.next_event }}</span>
-      <strong>{{ nav_next_event.title }}</strong>
+      <strong dir="auto">{{ nav_next_event.title }}</strong>
       <p>{{ nav_next_event.starts_at|date:"D, d.m. · H:i" }}</p>
-      <small>{{ nav_next_event.location|default:"Ort offen" }}</small>
+      <small dir="auto">{{ nav_next_event.location|default:"Ort offen" }}</small>
     </div>
     {% endif %}
     <div class="privacy-badge"><span>✓</span><div><strong>{{ ui.private }}</strong><small>{{ ui.no_public_api }}</small></div></div>
@@ -79,7 +65,7 @@
   <main class="main">
     <header class="topbar">
       <button class="menu-btn" type="button" aria-label="Menü öffnen" data-menu>☰</button>
-      <div class="topbar-title"><span>{{ ui.hello }}</span><strong>{{ request.user.first_name|default:request.user.username }}</strong></div>
+      <div class="topbar-title"><span>{{ ui.hello }}</span><strong dir="auto">{{ request.user.first_name|default:request.user.username }}</strong></div>
       <div class="top-actions">
         <span class="secure-pill">● {{ ui.internal_data }}</span>
         <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="avatar-btn" title="{{ ui.logout }}">{{ request.user.first_name|first|default:"T" }}{{ request.user.last_name|first }}</button></form>
