@@ -1,9 +1,7 @@
-name: Bootstrap The Team from Eintracht
+name: Apply The Team branding layer
 
 on:
   workflow_dispatch:
-  issues:
-    types: [opened]
   push:
     branches: [main]
     paths:
@@ -13,11 +11,11 @@ permissions:
   contents: write
 
 concurrency:
-  group: theteam-bootstrap
+  group: theteam-branding-bootstrap
   cancel-in-progress: false
 
 jobs:
-  mirror-upstream:
+  apply-and-validate:
     if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
@@ -26,29 +24,41 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Mirror Eintracht application source
+      - name: Apply verified branding patch
         shell: bash
         run: |
           set -euo pipefail
-          git clone --depth 1 https://github.com/hsdarestani/eintracht.git /tmp/eintracht
+          cat .theteam-patch/part* | base64 --decode > /tmp/theteam-branding-patch.tar.gz
+          echo "e3f2cb3babf61cf66b0f889cdb12ed5758a33330c8933cb3dc0b6f8a82c12171  /tmp/theteam-branding-patch.tar.gz" | sha256sum -c -
+          tar -tzf /tmp/theteam-branding-patch.tar.gz >/dev/null
+          tar -xzf /tmp/theteam-branding-patch.tar.gz -C .
+          rm -rf .theteam-patch
 
-          find . -mindepth 1 -maxdepth 1 ! -name .git ! -name .github -exec rm -rf {} +
-          mkdir -p .github/workflows
-          find .github -mindepth 1 -maxdepth 1 ! -name workflows -exec rm -rf {} +
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
 
-          rsync -a --delete \
-            --exclude='.git/' \
-            --exclude='.github/workflows/' \
-            /tmp/eintracht/ ./
+      - name: Validate application
+        shell: bash
+        env:
+          DJANGO_SECRET_KEY: ci-only-secret-key
+          DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1,team.smarbiz.sbs
+        run: |
+          set -euo pipefail
+          pip install -r requirements.txt
+          python manage.py makemigrations --check
+          python manage.py check
+          python manage.py test
+          python manage.py collectstatic --noinput
 
+      - name: Publish branding layer
+        shell: bash
+        run: |
+          set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
-
-          if git diff --cached --quiet; then
-            echo "Destination already mirrors the upstream source."
-            exit 0
-          fi
-
-          git commit -m "Mirror Eintracht application source"
+          git commit -m "Add configurable multilingual team identity"
           git push origin main
