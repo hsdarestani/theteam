@@ -1,43 +1,113 @@
-name: Apply The Team branding layer
+name: Deploy The Team
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
   issues:
     types: [opened]
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
-  group: theteam-branding-bootstrap
-  cancel-in-progress: false
+  group: theteam-production
+  cancel-in-progress: true
 
 jobs:
-  apply-branding:
-    if: github.actor != 'github-actions[bot]'
+  validate-and-deploy:
+    if: github.event_name != 'issues' || github.event.issue.title == 'Deploy The Team production'
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout destination
+      - name: Checkout source
         uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          fetch-depth: 0
+          python-version: "3.12"
+          cache: pip
 
-      - name: Apply verified branding patch
+      - name: Validate Django application
         shell: bash
+        env:
+          DJANGO_SECRET_KEY: ci-only-secret-key
+          DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1,team.smarbiz.sbs
         run: |
           set -euo pipefail
-          cat .theteam-patch/part* | base64 --decode > /tmp/theteam-branding-patch.tar.gz
-          echo "e3f2cb3babf61cf66b0f889cdb12ed5758a33330c8933cb3dc0b6f8a82c12171  /tmp/theteam-branding-patch.tar.gz" | sha256sum -c -
-          tar -tzf /tmp/theteam-branding-patch.tar.gz >/dev/null
-          tar -xzf /tmp/theteam-branding-patch.tar.gz -C .
-          rm -rf .theteam-patch
+          pip install -r requirements.txt
+          python manage.py makemigrations --check
+          python manage.py check
+          python manage.py test
+          python manage.py collectstatic --noinput
 
-      - name: Publish branding layer
-        shell: bash
-        run: |
-          set -euo pipefail
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
-          git commit -m "Add configurable multilingual team identity"
-          git push origin main
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.2.2
+        with:
+          host: ${{ secrets.HOST }}
+          username: root
+          password: ${{ secrets.PASS }}
+          port: 22
+          command_timeout: 20m
+          script_stop: true
+          script: |
+            set -eu
+            export DEBIAN_FRONTEND=noninteractive
+
+            if ! command -v git >/dev/null 2>&1 || ! command -v curl >/dev/null 2>&1 || ! command -v openssl >/dev/null 2>&1; then
+              apt-get update
+              apt-get install -y git curl openssl ca-certificates
+            fi
+
+            if ! command -v docker >/dev/null 2>&1; then
+              curl -fsSL https://get.docker.com | sh
+              systemctl enable --now docker
+            fi
+
+            if ! docker compose version >/dev/null 2>&1; then
+              apt-get update
+              apt-get install -y docker-compose-plugin
+            fi
+
+            if [ ! -d /opt/theteam/.git ]; then
+              rm -rf /opt/theteam
+              git clone https://github.com/hsdarestani/theteam.git /opt/theteam
+            else
+              cd /opt/theteam
+              git fetch origin main
+              git reset --hard origin/main
+              git clean -fd -e .env
+            fi
+
+            cd /opt/theteam
+
+            if [ ! -f .env ]; then
+              SECRET=$(openssl rand -hex 48)
+              DBPASS=$(openssl rand -hex 32)
+              cat > .env <<ENVFILE
+            DJANGO_SECRET_KEY=$SECRET
+            POSTGRES_DB=teamboard
+            POSTGRES_USER=teamboard
+            POSTGRES_PASSWORD=$DBPASS
+            DJANGO_ALLOWED_HOSTS=team.smarbiz.sbs,5.75.203.165,localhost,127.0.0.1
+            CSRF_TRUSTED_ORIGINS=https://team.smarbiz.sbs
+            ENVFILE
+              chmod 600 .env
+            fi
+
+            docker compose up -d --build --remove-orphans
+            docker image prune -f
+
+            for attempt in $(seq 1 40); do
+              if docker compose exec -T web curl -fsS http://127.0.0.1:8000/health/ >/dev/null; then
+                echo "Application health check passed."
+                docker compose ps
+                exit 0
+              fi
+              sleep 5
+            done
+
+            echo "Application did not become healthy in time."
+            docker compose ps
+            docker compose logs --tail=250
+            exit 1
