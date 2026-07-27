@@ -4,12 +4,9 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-  issues:
-    types: [opened]
 
 permissions:
   contents: read
-  issues: write
 
 concurrency:
   group: theteam-production
@@ -17,7 +14,6 @@ concurrency:
 
 jobs:
   validate-and-deploy:
-    if: github.event_name != 'issues' || github.event.issue.title == 'Deploy RTL and logo fixes'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout source
@@ -30,42 +26,19 @@ jobs:
           cache: pip
 
       - name: Validate Django application
-        id: validate
-        continue-on-error: true
         shell: bash
         env:
           DJANGO_SECRET_KEY: ci-only-secret-key
           DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1,team.smarbiz.sbs
         run: |
-          set -o pipefail
-          {
-            set -euo pipefail
-            pip install -r requirements.txt
-            python manage.py makemigrations --check
-            python manage.py check
-            python manage.py test
-            python manage.py collectstatic --noinput
-          } 2>&1 | tee /tmp/theteam-validation.log
-
-      - name: Publish validation error
-        if: always() && steps.validate.outcome == 'failure' && github.event_name == 'issues'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const fs = require('fs');
-            const raw = fs.existsSync('/tmp/theteam-validation.log')
-              ? fs.readFileSync('/tmp/theteam-validation.log', 'utf8')
-              : 'Validation log was not created.';
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-              body: `Validation failed:\n\n\`\`\`text\n${raw.slice(-12000)}\n\`\`\``,
-            });
+          set -euo pipefail
+          pip install -r requirements.txt
+          python manage.py makemigrations --check
+          python manage.py check
+          python manage.py test
+          python manage.py collectstatic --noinput
 
       - name: Deploy via SSH
-        id: deploy
-        if: steps.validate.outcome == 'success'
         uses: appleboy/ssh-action@v1.2.2
         with:
           host: ${{ secrets.HOST }}
@@ -128,13 +101,10 @@ jobs:
               sleep 5
             done
             docker compose exec -T web curl -fsS http://127.0.0.1:8000/health/ >/dev/null
-
             docker compose exec -T web sh -lc 'mkdir -p /app/media && printf media-ok > /app/media/.media-health'
             docker compose ps
 
-      - name: Verify public HTTPS and uploaded-media route
-        id: public
-        if: steps.deploy.outcome == 'success'
+      - name: Verify public HTTPS and media delivery
         shell: bash
         run: |
           set -euo pipefail
@@ -149,7 +119,7 @@ jobs:
           exit 1
 
       - name: Clean media health file
-        if: always() && steps.deploy.outcome == 'success'
+        if: always()
         uses: appleboy/ssh-action@v1.2.2
         with:
           host: ${{ secrets.HOST }}
@@ -158,25 +128,4 @@ jobs:
           port: 22
           script: |
             cd /opt/theteam
-            docker compose exec -T web rm -f /app/media/.media-health
-
-      - name: Publish workflow result
-        if: always() && github.event_name == 'issues'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const validation = '${{ steps.validate.outcome }}';
-            const deployment = '${{ steps.deploy.outcome }}';
-            const publicCheck = '${{ steps.public.outcome }}';
-            const succeeded = validation === 'success' && deployment === 'success' && publicCheck === 'success';
-            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-              body: `Workflow **${succeeded ? 'success' : 'failure'}**. Validation: \`${validation}\`. Deployment: \`${deployment}\`. Public media: \`${publicCheck}\`.\n\n${runUrl}`,
-            });
-
-      - name: Fail when validation failed
-        if: steps.validate.outcome == 'failure'
-        run: exit 1
+            docker compose exec -T web rm -f /app/media/.media-health || true
