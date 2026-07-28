@@ -4,6 +4,7 @@ import re
 from collections.abc import Mapping
 
 from .branding import PHRASE_TRANSLATIONS, language_prefix
+from .persian_translations import PERSIAN_TRANSLATIONS
 
 _TAG_SPLIT_RE = re.compile(r"(<[^>]+>)")
 _TAG_NAME_RE = re.compile(r"^<\s*/?\s*([a-zA-Z0-9:-]+)")
@@ -68,6 +69,8 @@ def translate_html_content(
 
     language = language_prefix(language_code)
     translations = dict(PHRASE_TRANSLATIONS.get(language, {}))
+    if language == "fa":
+        translations.update(PERSIAN_TRANSLATIONS)
     if custom:
         translations.update({str(key): str(value) for key, value in custom.items()})
     if not translations:
