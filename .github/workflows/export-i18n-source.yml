@@ -1,0 +1,40 @@
+name: Export i18n source
+
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  export:
+    if: github.event.issue.title == 'Export i18n source'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Collect interface source
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/i18n-source
+          for path in core ratings templates teamboard; do
+            if [ -e "$path" ]; then cp -R "$path" /tmp/i18n-source/; fi
+          done
+          find /tmp/i18n-source -type d -name '__pycache__' -prune -exec rm -rf {} + || true
+          find /tmp/i18n-source -type f \( -name '*.pyc' -o -name '*.png' -o -name '*.jpg' -o -name '*.webp' \) -delete || true
+      - uses: actions/upload-artifact@v4
+        with:
+          name: i18n-source
+          path: /tmp/i18n-source
+          retention-days: 1
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: `Interface source exported. Run ID: \`${context.runId}\`.`,
+            });
