@@ -7,6 +7,11 @@ from .branding import PHRASE_TRANSLATIONS, language_prefix
 
 _TAG_SPLIT_RE = re.compile(r"(<[^>]+>)")
 _TAG_NAME_RE = re.compile(r"^<\s*/?\s*([a-zA-Z0-9:-]+)")
+_TRANSLATABLE_ATTRIBUTE_RE = re.compile(
+    r"(?P<prefix>\b(?:placeholder|title|aria-label)\s*=\s*)"
+    r"(?P<quote>[\"'])(?P<value>.*?)(?P=quote)",
+    flags=re.IGNORECASE,
+)
 _VOID_TAGS = {
     "area",
     "base",
@@ -38,17 +43,27 @@ def _replace_phrases(text: str, translations: Mapping[str, str]) -> str:
     return text
 
 
+def _translate_safe_attributes(tag: str, translations: Mapping[str, str]) -> str:
+    """Translate user-facing attributes without touching form values or URLs."""
+
+    def replace(match: re.Match[str]) -> str:
+        translated = _replace_phrases(match.group("value"), translations)
+        return f'{match.group("prefix")}{match.group("quote")}{translated}{match.group("quote")}'
+
+    return _TRANSLATABLE_ATTRIBUTE_RE.sub(replace, tag)
+
+
 def translate_html_content(
     content: str,
     language_code: str,
     custom: Mapping[str, str] | None = None,
 ) -> str:
-    """Translate visible HTML text while preserving tags and user-entered values.
+    """Translate rendered interface copy while preserving user-entered values.
 
-    The old whole-document string replacement could turn values such as
-    ``Spielvorbereitung`` into mixed Arabic/German text. This implementation
-    translates only text nodes, respects word boundaries and skips elements
-    marked with the standard ``translate=\"no\"`` attribute.
+    Translation is limited to visible text nodes and safe interface attributes
+    such as ``placeholder``, ``title`` and ``aria-label``. Input values, links,
+    CSS, JavaScript and elements marked with ``translate=\"no\"`` are never
+    changed.
     """
 
     language = language_prefix(language_code)
@@ -68,10 +83,10 @@ def translate_html_content(
             output.append(part if any(skip_stack) else _replace_phrases(part, translations))
             continue
 
-        output.append(part)
         stripped = part.lstrip()
         match = _TAG_NAME_RE.match(stripped)
         if not match or stripped.startswith("<!") or stripped.startswith("<?"):
+            output.append(part)
             continue
 
         tag_name = match.group(1).lower()
@@ -79,6 +94,7 @@ def translate_html_content(
         is_self_closing = stripped.rstrip().endswith("/>") or tag_name in _VOID_TAGS
 
         if is_closing:
+            output.append(part)
             if skip_stack:
                 skip_stack.pop()
             continue
@@ -92,6 +108,8 @@ def translate_html_content(
             or "translate='no'" in normalized
             or "data-no-translate" in normalized
         )
+
+        output.append(part if element_skipped else _translate_safe_attributes(part, translations))
         if not is_self_closing:
             skip_stack.append(element_skipped)
 
