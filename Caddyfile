@@ -1,4 +1,10 @@
-team.smarbiz.sbs {
+{
+    # Keep certificate automation for the HTTPS origin, but do not redirect the
+    # HTTP origin connection used by Cloudflare Flexible mode.
+    auto_https disable_redirects
+}
+
+(team_app) {
     encode zstd gzip
 
     handle_path /media/* {
@@ -24,4 +30,12 @@ team.smarbiz.sbs {
         output stdout
         format console
     }
+}
+
+http://team.smarbiz.sbs {
+    import team_app
+}
+
+https://team.smarbiz.sbs {
+    import team_app
 }
